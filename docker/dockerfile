@@ -1,0 +1,29 @@
+FROM golang:latest as builder
+
+LABEL maintainer="Hector Morales <hector.morales.carnice@gmail.com>"
+LABEL repo-url="https://github.com/HectorMRC/gw-pool"
+LABEL version="alpha"
+
+RUN apt update
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+
+RUN go test ./...
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o gw-pool cmd/main.go
+
+######## Start a new stage from scratch #######
+FROM alpine:latest  
+
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /app
+
+COPY --from=builder /app/.env .
+COPY --from=builder /app/gw-pool .
+
+# Command to run the executable
+CMD [ "./gw-pool" ]
