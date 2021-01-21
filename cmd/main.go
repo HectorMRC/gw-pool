@@ -44,14 +44,14 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Got a location update from driver %v", coord.GetDriverID())
-	go datapool.Insert(&coord)
+	datapool.Insert(&coord)
 }
 
 func main() {
 	// setting up environment
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	if err := godotenv.Load(); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatalf(errDotenvConfig, err.Error())
 	}
 
 	servicePort, exists := os.LookupEnv(envPortKey)

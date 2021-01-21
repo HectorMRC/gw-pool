@@ -83,23 +83,23 @@ func (dp *datapool) execQueryForeach(conn Conn) (err error) {
 }
 
 func (dp *datapool) scheduler(ctx context.Context) {
-	for ctx.Err() == nil {
+	var err error
+	for err == nil {
 		// each iteration waits for the stack to be non empty
 		dp.cond.L.Lock()
 		if dp.stack.Len() == 0 {
 			dp.cond.Wait()
 		}
 
-		// waiting for database connectivity
-		conn, err := dp.waitForConnectivity(ctx)
-		if err != nil {
-			log.Printf("%v", err.Error())
-			break
-		}
-
-		// persisting all current data
-		dp.execQueryForeach(conn)
 		dp.cond.L.Unlock()
+
+		// waiting for database connectivity
+		var conn Conn
+		conn, err = dp.waitForConnectivity(ctx)
+		if err == nil {
+			// persisting all current data
+			err = dp.execQueryForeach(conn)
+		}
 	}
 }
 
@@ -134,9 +134,6 @@ func (dp *datapool) Stop() {
 }
 
 func (dp *datapool) Insert(loc Location) {
-	dp.mu.Lock()
-	defer dp.mu.Unlock()
-
 	dp.cond.L.Lock()
 	if loc != nil {
 		dp.stack.PushBack(loc)
