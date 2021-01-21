@@ -3,9 +3,14 @@ package pool
 import (
 	"context"
 	"database/sql"
-
-	"github.com/HectorMRC/gw-pool/location"
 )
+
+// Location is the current position for any driver
+type Location interface {
+	GetLatitude() int
+	GetLongitude() int
+	GetDriverID() int
+}
 
 // A Conn represents the connection to any database
 type Conn interface {
@@ -16,7 +21,7 @@ type Conn interface {
 
 // A Pool represents a controller between some data to persistence and the database
 type Pool interface {
-	Insert(loc location.Location)
+	Insert(Location)
 	Reset()
 	Stop()
 }

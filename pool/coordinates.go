@@ -1,4 +1,4 @@
-package location
+package pool
 
 // Coordinates represents the location for a driver using latitude and longitude parameters
 type Coordinates struct {

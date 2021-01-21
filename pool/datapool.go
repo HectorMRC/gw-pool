@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HectorMRC/gw-pool/location"
-
 	// required by postgres connections
 	_ "github.com/lib/pq"
 )
@@ -68,7 +66,7 @@ func (dp *datapool) execQueryForeach(conn Conn) (err error) {
 	// while no error happen, and there still elements to persist
 	for err == nil && dp.stack.Len() > 0 {
 		elem := dp.stack.Front()
-		loc, ok := elem.Value.(location.Location)
+		loc, ok := elem.Value.(Location)
 		if ok {
 			_, err = conn.Exec(sqlStatement, loc.GetLatitude(), loc.GetLongitude(), loc.GetDriverID())
 		}
@@ -135,7 +133,7 @@ func (dp *datapool) Stop() {
 	dp.kill()
 }
 
-func (dp *datapool) Insert(loc location.Location) {
+func (dp *datapool) Insert(loc Location) {
 	dp.mu.Lock()
 	defer dp.mu.Unlock()
 

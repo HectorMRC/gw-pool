@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/HectorMRC/gw-pool/pool"
-
-	"github.com/HectorMRC/gw-pool/location"
 	"github.com/joho/godotenv"
 )
 
@@ -36,7 +34,7 @@ const (
 var datapool pool.Pool
 
 func requestHandler(w http.ResponseWriter, r *http.Request) {
-	var coord location.Coordinates
+	var coord pool.Coordinates
 	decoder := json.NewDecoder(r.Body)
 
 	decoder.DisallowUnknownFields()
