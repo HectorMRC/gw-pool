@@ -3,25 +3,33 @@ package pool
 import (
 	"container/list"
 	"context"
+	"database/sql"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/HectorMRC/gw-pool/db"
 	"github.com/HectorMRC/gw-pool/location"
+
+	// required by postgres connections
+	_ "github.com/lib/pq"
 )
+
+const sqlStatement = `
+	INSERT INTO locations (latitude, longitude, driver_id)
+	VALUES ($1, $2, $3)`
 
 // datapool is the default implementation of the Gateway interface
 type datapool struct {
+	DNS    string
+	Sleep  time.Duration
 	stack  list.List
 	mu     sync.Mutex
 	cancel context.CancelFunc
-	sleep  time.Duration
 	cond   *sync.Cond
 }
 
-func (dp *datapool) newConnection(ctx context.Context) (conn db.Conn, err error) {
-	if conn, err = db.NewPostgresConn(); err != nil {
+func (dp *datapool) newPostgresConn(ctx context.Context) (conn Conn, err error) {
+	if conn, err = sql.Open("postgres", dp.DNS); err != nil {
 		return
 	}
 
@@ -29,27 +37,51 @@ func (dp *datapool) newConnection(ctx context.Context) (conn db.Conn, err error)
 	return
 }
 
-func (dp *datapool) waitForConnectivity(ctx context.Context) (conn db.Conn, err error) {
-	ticker := time.NewTicker(dp.sleep)
+func (dp *datapool) waitForConnectivity(ctx context.Context) (conn Conn, err error) {
+	ticker := time.NewTicker(dp.Sleep)
 	defer ticker.Stop()
 
-	for conn, err = dp.newConnection(ctx); err != nil; {
+	for conn, err = dp.newPostgresConn(ctx); err != nil; {
 		select {
 		case <-ticker.C:
-			conn.Close()
+			if conn != nil {
+				conn.Close()
+			}
+
 			log.Printf("Failed to connect to database: %v", err.Error())
-			conn, err = dp.newConnection(ctx)
+			conn, err = dp.newPostgresConn(ctx)
+
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			err = ctx.Err()
+			log.Printf("Context has been canceled: %v", err.Error())
+			return
 		}
 	}
 
 	return
 }
 
-func (dp *datapool) executeQuery(conn db.Conn) error {
+func (dp *datapool) execQueryForeach(conn Conn) (err error) {
 	defer conn.Close()
-	return nil
+	ilen := dp.stack.Len()
+
+	// while no error happen, and there still elements to persist
+	for err == nil && dp.stack.Len() > 0 {
+		elem := dp.stack.Front()
+		loc, ok := elem.Value.(location.Location)
+		if ok {
+			_, err = conn.Exec(sqlStatement, loc.GetLatitude(), loc.GetLongitude(), loc.GetDriverID())
+		}
+
+		// if the elemen has no value of type location, or the location inside has been properly persisted
+		// the element must be removed from the pool
+		if !ok || err == nil {
+			dp.stack.Remove(elem)
+		}
+	}
+
+	log.Printf("%v of %v locations have been persisted", ilen-dp.stack.Len(), ilen)
+	return
 }
 
 func (dp *datapool) scheduler(ctx context.Context) {
@@ -68,7 +100,7 @@ func (dp *datapool) scheduler(ctx context.Context) {
 		}
 
 		// persisting all current data
-		dp.executeQuery(conn)
+		dp.execQueryForeach(conn)
 		dp.cond.L.Unlock()
 	}
 }

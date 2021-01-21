@@ -5,8 +5,9 @@ import (
 )
 
 // NewDatapool returns a brand new datapool as Gateway
-func NewDatapool(sleep time.Duration) Pool {
+func NewDatapool(DNS string, sleep time.Duration) Pool {
 	return &datapool{
-		sleep: sleep,
+		DNS:   DNS,
+		Sleep: sleep,
 	}
 }

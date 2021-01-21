@@ -24,10 +24,12 @@ const (
 	errDotenvConfig = "Service has failed setting up dotenv: %s"
 	errListenFailed = "Service has failed listening: %s"
 	errServeFailed  = "Service has failed serving: %s"
+	errPostgresDNS  = "Database DNS must be set."
 
 	envPortKey  = "SERVICE_PORT"
 	envNetwKey  = "SERVICE_NETW"
 	envSleepKey = "SLEEP_SEC"
+	envDNSKey   = "DATABASE_DNS"
 )
 
 // Single instance of a Pool
@@ -44,7 +46,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Got a location update from driver %v", coord.GetDriverID())
-	datapool.Insert(&coord)
+	go datapool.Insert(&coord)
 }
 
 func main() {
@@ -64,6 +66,11 @@ func main() {
 		log.Panicf(errServiceNetw)
 	}
 
+	dns, exists := os.LookupEnv(envDNSKey)
+	if !exists {
+		log.Panicf(errPostgresDNS)
+	}
+
 	sleepEnv := os.Getenv(envSleepKey)
 	sleep := time.Second
 	if secs, _ := strconv.Atoi(sleepEnv); secs > 0 {
@@ -71,7 +78,7 @@ func main() {
 	}
 
 	// initializing data pool
-	datapool = pool.NewDatapool(sleep)
+	datapool = pool.NewDatapool(dns, sleep)
 	datapool.Reset()
 	defer datapool.Stop()
 
@@ -90,6 +97,6 @@ func main() {
 		log.Panicf(errServeFailed, err)
 	}
 
-	// once finishing
+	// on finishing
 	log.Print(infoDone)
 }
