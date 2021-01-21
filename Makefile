@@ -7,7 +7,7 @@ build:
 	docker build -t ${REPO}/${PROJECT}:${VERSION} -f ./docker/dockerfile .
 
 run:
-	go run ./cmd/location/main.go
+	go run ./cmd/main.go
 
 test:
 	go clean -testcache

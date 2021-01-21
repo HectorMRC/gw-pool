@@ -6,6 +6,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/HectorMRC/gw-pool/pool"
 
@@ -23,26 +25,26 @@ const (
 	errListenFailed = "Service has failed listening: %s"
 	errServeFailed  = "Service has failed serving: %s"
 
-	envPortKey = "SERVICE_PORT"
-	envNetwKey = "SERVICE_NETW"
+	envPortKey  = "SERVICE_PORT"
+	envNetwKey  = "SERVICE_NETW"
+	envSleepKey = "SLEEP_SEC"
 )
 
-// Single instance of a Gateway
-var gwpool = pool.NewDatapool()
+// Single instance of a Pool
+var datapool pool.Pool
 
 func requestHandler(w http.ResponseWriter, r *http.Request) {
 	var coord location.Coordinates
+	decoder := json.NewDecoder(r.Body)
 
-	err := json.NewDecoder(r.Body).Decode(&coord)
-	if err != nil {
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&coord); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err != gwpool.Insert(&coord) {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	log.Printf("Got a location update from driver %v", coord.GetDriverID())
+	datapool.Insert(&coord)
 }
 
 func main() {
@@ -61,6 +63,17 @@ func main() {
 	if !exists {
 		log.Panicf(errServiceNetw)
 	}
+
+	sleepEnv := os.Getenv(envSleepKey)
+	sleep := time.Second
+	if secs, _ := strconv.Atoi(sleepEnv); secs > 0 {
+		sleep = time.Duration(secs) * time.Second
+	}
+
+	// initializing data pool
+	datapool = pool.NewDatapool(sleep)
+	datapool.Reset()
+	defer datapool.Stop()
 
 	// starting http service
 	address := ":" + servicePort

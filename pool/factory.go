@@ -1,19 +1,12 @@
 package pool
 
 import (
-	"fmt"
-	"sync"
+	"time"
 )
 
 // NewDatapool returns a brand new datapool as Gateway
-func NewDatapool() Pool {
-	newfunc := func() interface{} {
-		return fmt.Errorf("EOF")
-	}
-
+func NewDatapool(sleep time.Duration) Pool {
 	return &datapool{
-		pool: sync.Pool{
-			New: newfunc,
-		},
+		sleep: sleep,
 	}
 }

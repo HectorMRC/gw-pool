@@ -32,14 +32,14 @@ services:
             - database
             
     #### BACKEND ###
-    gw-pool:
-        container_name: gw-pool
-        image: alvidir/gw-pool:0.1.0
-        restart: always
-        networks: 
-            - database
-        env_file:
-            - .env
+    #gw-pool:
+    #    container_name: gw-pool
+    #    image: alvidir/gw-pool:0.1.0
+    #    restart: always
+    #    networks: 
+    #        - database
+    #    env_file:
+    #        - .env
 
 networks:
     ## Database network is the bridge between domain environment and the sql databases
