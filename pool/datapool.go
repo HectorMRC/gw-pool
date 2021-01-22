@@ -3,13 +3,10 @@ package pool
 import (
 	"container/list"
 	"context"
-	"database/sql"
+	"fmt"
 	"log"
 	"sync"
 	"time"
-
-	// required by postgres connections
-	_ "github.com/lib/pq"
 )
 
 const sqlStatement = `
@@ -18,16 +15,21 @@ const sqlStatement = `
 
 // datapool is the default implementation of the Gateway interface
 type datapool struct {
-	DNS    string
-	Sleep  time.Duration
+	Open   ConnFunc      // Open is the default function for opening a new connection to database
+	Sleep  time.Duration // Sleep is the time to wait for between a failed connection and the next try
 	stack  list.List
 	mu     sync.Mutex
 	cancel context.CancelFunc
 	cond   *sync.Cond
 }
 
-func (dp *datapool) newPostgresConn(ctx context.Context) (conn Conn, err error) {
-	if conn, err = sql.Open("postgres", dp.DNS); err != nil {
+func (dp *datapool) newDatabaseConn(ctx context.Context) (conn Conn, err error) {
+	if dp.Open == nil {
+		err = fmt.Errorf("Open function must be set")
+		return
+	}
+
+	if conn, err = dp.Open(); err != nil {
 		return
 	}
 
@@ -39,7 +41,7 @@ func (dp *datapool) waitForConnectivity(ctx context.Context) (conn Conn, err err
 	ticker := time.NewTicker(dp.Sleep)
 	defer ticker.Stop()
 
-	for conn, err = dp.newPostgresConn(ctx); err != nil; {
+	for conn, err = dp.newDatabaseConn(ctx); err != nil; {
 		select {
 		case <-ticker.C:
 			if conn != nil {
@@ -47,7 +49,7 @@ func (dp *datapool) waitForConnectivity(ctx context.Context) (conn Conn, err err
 			}
 
 			log.Printf("Failed to connect to database: %v", err.Error())
-			conn, err = dp.newPostgresConn(ctx)
+			conn, err = dp.newDatabaseConn(ctx)
 
 		case <-ctx.Done():
 			err = ctx.Err()

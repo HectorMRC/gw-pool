@@ -5,6 +5,9 @@ import (
 	"database/sql"
 )
 
+// ConnFunc provides an anonymous connection to a database
+type ConnFunc func() (Conn, error)
+
 // Location is the current position for any driver
 type Location interface {
 	GetLatitude() int

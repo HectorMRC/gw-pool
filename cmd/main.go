@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net"
@@ -11,6 +12,9 @@ import (
 
 	"github.com/HectorMRC/gw-pool/pool"
 	"github.com/joho/godotenv"
+
+	// required by postgres connections
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -76,7 +80,8 @@ func main() {
 	}
 
 	// initializing data pool
-	datapool = pool.NewDatapool(dns, sleep)
+	open := func() (pool.Conn, error) { return sql.Open("postgres", dns) }
+	datapool = pool.NewDatapool(open, sleep)
 	datapool.Reset()
 	defer datapool.Stop()
 
