@@ -80,8 +80,10 @@ func main() {
 	}
 
 	// initializing data pool
-	open := func() (pool.Conn, error) { return sql.Open("postgres", dns) }
-	datapool = pool.NewDatapool(open, sleep)
+	datapool = pool.NewDatapool(sleep, func() (pool.Conn, error) {
+		return sql.Open("postgres", dns)
+	})
+
 	datapool.Reset()
 	defer datapool.Stop()
 
