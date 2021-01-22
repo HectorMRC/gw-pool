@@ -73,14 +73,17 @@ func main() {
 		log.Panicf(errPostgresDNS)
 	}
 
-	sleepEnv := os.Getenv(envSleepKey)
-	sleep := time.Second
-	if secs, _ := strconv.Atoi(sleepEnv); secs > 0 {
-		sleep = time.Duration(secs) * time.Second
+	var secs int = 1
+	if sleep, exists := os.LookupEnv(envSleepKey); exists {
+		parse, err := strconv.Atoi(sleep)
+		if err == nil && parse > 0 {
+			secs = parse
+		}
 	}
 
 	// initializing data pool
-	datapool = pool.NewDatapool(sleep, func() (pool.Conn, error) {
+	t := time.Duration(secs) * time.Second
+	datapool = pool.NewDatapool(t, func() (pool.Conn, error) {
 		return sql.Open("postgres", dns)
 	})
 

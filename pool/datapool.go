@@ -18,9 +18,9 @@ type datapool struct {
 	Open   ConnFunc      // Open is the default function for opening a new connection to database
 	Sleep  time.Duration // Sleep is the time to wait for between a failed connection and the next try
 	stack  list.List
-	mu     sync.Mutex
+	mu     sync.RWMutex
 	cancel context.CancelFunc
-	cond   *sync.Cond
+	cond   sync.Cond
 }
 
 func (dp *datapool) newDatabaseConn(ctx context.Context) (conn Conn, err error) {
@@ -110,6 +110,8 @@ func (dp *datapool) kill() {
 		dp.cancel()
 		dp.cancel = nil
 	}
+
+	dp.cond.Broadcast()
 }
 
 func (dp *datapool) Reset() {
@@ -122,7 +124,6 @@ func (dp *datapool) Reset() {
 
 	ctx := context.Background()
 	ctx, dp.cancel = context.WithCancel(ctx)
-	dp.cond = sync.NewCond(&sync.Mutex{})
 	dp.stack.Init()
 
 	go dp.scheduler(ctx)

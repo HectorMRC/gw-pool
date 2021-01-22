@@ -4,5 +4,3 @@ CREATE TABLE IF NOT EXISTS Locations (
     longitude INTEGER NOT NULL,
     driver_id INTEGER NOT NULL
 );
-
-DROP TABLE Locations;

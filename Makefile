@@ -1,13 +1,16 @@
 # Global about the project
 VERSION=alpha
-REPO=HectorMRC
+REPO=hectormrc
 PROJECT=gw-pool
 
 build:
 	docker build -t ${REPO}/${PROJECT}:${VERSION} -f ./docker/dockerfile .
 
 run:
-	go run ./cmd/main.go
+	go run ./cmd/server/main.go
+
+ping:
+	go run ./cmd/client/main.go
 
 test:
 	go clean -testcache

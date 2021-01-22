@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+
+	"github.com/HectorMRC/gw-pool/pool"
 )
 
 var url = "http://localhost:8080"
@@ -17,11 +19,8 @@ func SetURL(newURL string) {
 // PostRequest makes a standard request for gw-pool service
 func PostRequest(latitude, longitude, clientID int) (err error) {
 	var body []byte
-	if body, err = json.Marshal(map[string]int{
-		"latitude":  latitude,
-		"longitude": longitude,
-		"client_id": clientID,
-	}); err != nil {
+	loc := pool.NewLocation(latitude, longitude, clientID)
+	if body, err = json.Marshal(loc); err != nil {
 		return
 	}
 
