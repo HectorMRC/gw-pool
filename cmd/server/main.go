@@ -28,14 +28,20 @@ const (
 	errServeFailed  = "Service has failed serving: %s"
 	errPostgresDNS  = "Database DNS must be set."
 
+	envDotKey   = "DOTENV_PATH"
 	envPortKey  = "SERVICE_PORT"
 	envNetwKey  = "SERVICE_NETW"
 	envSleepKey = "SLEEP_SEC"
 	envDNSKey   = "DATABASE_DNS"
 )
 
-// Single instance of a Pool
-var datapool pool.Pool
+var (
+	// Single instance of a Pool
+	datapool pool.Pool
+
+	// dotenv file path, if empty dotenv disabled
+	dotenvPath = os.Getenv(envDotKey)
+)
 
 func requestHandler(w http.ResponseWriter, r *http.Request) {
 	var coord pool.Coordinates
@@ -54,8 +60,10 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	// setting up environment
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf(errDotenvConfig, err.Error())
+	if len(dotenvPath) > 0 {
+		if err := godotenv.Load(dotenvPath); err != nil {
+			log.Fatalf(errDotenvConfig, err.Error())
+		}
 	}
 
 	servicePort, exists := os.LookupEnv(envPortKey)
